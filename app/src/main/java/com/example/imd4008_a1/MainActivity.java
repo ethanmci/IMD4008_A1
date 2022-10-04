@@ -3,6 +3,7 @@ package com.example.imd4008_a1;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
+import android.os.Debug;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
@@ -83,31 +84,85 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void addEntry(char entry) {
-        if(Character.isDigit(entry)
-                || (calcEntries.size() != 0
-                    && Character.isDigit((char) calcEntries.get(calcEntries.size() - 1).charAt(0)))) {
-            calcEntries.add(String.valueOf(entry));
+        Log.d("ENTRY", String.valueOf(entry));
+        if(Character.isDigit(entry) && Character.getNumericValue(entry) < 10) {
+            if (calcEntries.size() == 0) {
+                calcEntries.add(Character.toString(entry));
+            } else {
+                String lastEntry = calcEntries.get(calcEntries.size() - 1);
+                //Log.d("ENTRY", lastEntry);
+                if (!Character.isDigit(lastEntry.charAt(0)) && lastEntry.length() == 1) {
+                    // char is an operator
+                    calcEntries.add(Character.toString(entry));
+                } else {
+                    // char is not an operator
+                    calcEntries.set(calcEntries.size() - 1,
+                            calcEntries.get(calcEntries.size() - 1) + Character.toString(entry));
+                }
+            }
+        } else if (calcEntries.size() != 0) {
+            String lastEntry = calcEntries.get(calcEntries.size() - 1);
+            if (Character.isDigit(lastEntry.charAt(0)) && lastEntry.length() != 1) {
+                calcEntries.add(Character.toString(entry));
+            }
         }
+
     }
 
     public void delEntry() {
-
+        if(calcEntries.size() != 0) {
+            String lastEntry = calcEntries.get(calcEntries.size() - 1);
+            if (!Character.isDigit(lastEntry.charAt(0)) && lastEntry.length() == 1) {
+                // char is an operator
+                calcEntries.remove(calcEntries.size() - 1);
+            } else {
+                // char is not an operator
+                if (lastEntry.length() == 1) {
+                    calcEntries.remove(calcEntries.size() - 1);
+                } else if (lastEntry.contains(".")) {
+                    // removing a decimal
+                    if (lastEntry.substring(0, 2) == "0.") {
+                        calcEntries.remove(calcEntries.size() - 1);
+                    } else {
+                        calcEntries.set(calcEntries.size() - 1,
+                                lastEntry.substring(0, lastEntry.length() - 1));
+                    }
+                } else {
+                    calcEntries.set(calcEntries.size() - 1,
+                            lastEntry.substring(0, lastEntry.length()));
+                }
+            }
+        }
     }
 
     public void clearEntry() {
         calcEntries = new ArrayList<String>();
     }
 
+    public void changeSign() {
+
+        clearEntry();
+    }
+
+    public void calculate() {}
+
+
+    public void addDecimal() {
+        if(calcEntries.size() == 0) {
+            calcEntries.add("0.");
+        } else if (!calcEntries.get(calcEntries.size() - 1).contains(".")) {
+            Log.d("DECIMAL", "no decimal yet");
+            String lastEntry = calcEntries.get(calcEntries.size() - 1);
+            if (Character.isDigit(lastEntry.charAt(0)) && lastEntry.length() != 1) {
+                calcEntries.set(calcEntries.size() - 1, lastEntry + ".");
+            }
+        }
+    }
+
     public void updateCalcDisplay() {
         String out = "";
-        Log.d("STATE", "reached!");
         for(String entry : calcEntries) {
-            if(Character.isDigit(entry.charAt(0)) && entry.length() == 1) {
-                Log.d("STATE", "it's a digit:" + entry.charAt(0));
-                out = out + entry;
-            } else {
-                out = out + " " + entry + " ";
-            }
+            out = out + " " + entry;
         }
         calcDisplay.setText(out);
     }
@@ -155,11 +210,20 @@ public class MainActivity extends AppCompatActivity {
             case R.id.multiBtn:
                 addEntry('*');
                 break;
+            case R.id.deciBtn:
+                addDecimal();
+                break;
+            case R.id.signBtn:
+                changeSign();
+                break;
             case R.id.delBtn:
                 delEntry();
                 break;
             case R.id.clearBtn:
                 clearEntry();
+                break;
+            case R.id.equalsBtn:
+                calculate();
                 break;
             default:
                 Log.e("BUTTON", "Unidentified button pressed");

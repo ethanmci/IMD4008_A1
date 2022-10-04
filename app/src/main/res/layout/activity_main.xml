@@ -359,7 +359,7 @@
         <Button
             android:id="@+id/equalsBtn"
             android:layout_width="@dimen/calcButton"
-            android:layout_height="152dp"
+            android:layout_height="154dp"
             android:layout_marginLeft="3dp"
             android:layout_marginTop="0dp"
             android:layout_marginRight="3dp"
