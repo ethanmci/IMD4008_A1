@@ -10,12 +10,10 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
-class calcEntry {
-
-}
 
 public class MainActivity extends AppCompatActivity {
 
@@ -94,15 +92,22 @@ public class MainActivity extends AppCompatActivity {
                 if (!Character.isDigit(lastEntry.charAt(0)) && lastEntry.length() == 1) {
                     // char is an operator
                     calcEntries.add(Character.toString(entry));
+                } else if (lastEntry.charAt(0) == '0' && lastEntry.length() == 1 && entry != '0') {
+                    calcEntries.set(calcEntries.size() - 1, Character.toString(entry));
                 } else {
                     // char is not an operator
+
+                    // bit messy? might want to change...
+                    if(lastEntry.charAt(0) == '0' && lastEntry.length() == 1 && entry == '0' ) return;
+
                     calcEntries.set(calcEntries.size() - 1,
                             calcEntries.get(calcEntries.size() - 1) + Character.toString(entry));
                 }
             }
-        } else if (calcEntries.size() != 0) {
+        }
+        else if (calcEntries.size() != 0) {
             String lastEntry = calcEntries.get(calcEntries.size() - 1);
-            if (Character.isDigit(lastEntry.charAt(0)) && lastEntry.length() != 1) {
+            if (Character.isDigit(lastEntry.charAt(0)) || lastEntry.length() != 1) {
                 calcEntries.add(Character.toString(entry));
             }
         }
@@ -119,17 +124,12 @@ public class MainActivity extends AppCompatActivity {
                 // char is not an operator
                 if (lastEntry.length() == 1) {
                     calcEntries.remove(calcEntries.size() - 1);
-                } else if (lastEntry.contains(".")) {
-                    // removing a decimal
-                    if (lastEntry.substring(0, 2) == "0.") {
-                        calcEntries.remove(calcEntries.size() - 1);
-                    } else {
-                        calcEntries.set(calcEntries.size() - 1,
-                                lastEntry.substring(0, lastEntry.length() - 1));
-                    }
+                } else if (lastEntry.contains("-") && lastEntry.length() == 2) {
+                    // has a negative sign
+                    calcEntries.remove(calcEntries.size() - 1);
                 } else {
                     calcEntries.set(calcEntries.size() - 1,
-                            lastEntry.substring(0, lastEntry.length()));
+                            lastEntry.substring(0, lastEntry.length() - 1));
                 }
             }
         }
@@ -140,11 +140,79 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void changeSign() {
-
-        clearEntry();
+        if(calcEntries.size() > 0) {
+            String lastEntry = calcEntries.get(calcEntries.size() - 1);
+            if (!Character.isDigit(lastEntry.charAt(0)) && lastEntry.length() == 1) {
+                // char is an operator
+                return;
+            } else {
+                // char is not an operator
+                if(Character.isDigit(lastEntry.charAt(0))) {
+                    // no sign, add negative
+                    calcEntries.set(calcEntries.size() - 1, "-" + lastEntry);
+                } else if (lastEntry.length() > 1) {
+                    // there is a sign, remove the negative
+                    calcEntries.set(calcEntries.size() - 1,
+                            lastEntry.substring(1, lastEntry.length()));
+                }
+            }
+        }
     }
 
-    public void calculate() {}
+    public void calculate() {
+        float result;
+        // trimming undesired operators at the end
+        if(calcEntries.get(calcEntries.size() - 1).length() == 1
+                && !Character.isDigit(calcEntries.get(calcEntries.size() - 1).charAt(0))) {
+            calcEntries.remove(calcEntries.size() - 1);
+        }
+
+        // dealing with multiplication
+        while(calcEntries.contains("*") || calcEntries.contains("/")) {
+            int insertIndex = 0;
+            String subResult = "";
+            for (String entry : calcEntries) {
+                if(entry.equals("*") || entry.equals("/")) {
+                    // found an operator
+                    float x = Float.parseFloat(calcEntries.get(insertIndex - 1));
+                    float y = Float.parseFloat(calcEntries.get(insertIndex + 1));
+
+                    if(entry.equals("*")) { subResult = String.valueOf(x * y); }
+                    else { subResult = String.valueOf(x / y); }
+
+                    calcEntries.subList(insertIndex - 1, insertIndex + 2).clear();
+                    break;
+                }
+                insertIndex++;
+            }
+
+            if(!subResult.equals("")) calcEntries.add(insertIndex - 1, subResult);
+        }
+
+        // dealing w ith addition + subtraction
+        while(calcEntries.contains("+") || calcEntries.contains("-")) {
+            int insertIndex = 0;
+            String subResult = "";
+            for (String entry : calcEntries) {
+                if(entry.equals("+") || entry.equals("-")) {
+                    // found an operator
+                    float x = Float.parseFloat(calcEntries.get(insertIndex - 1));
+                    float y = Float.parseFloat(calcEntries.get(insertIndex + 1));
+
+                    if(entry.equals("+")) { subResult = String.valueOf(x + y); }
+                    else { subResult = String.valueOf(x - y); }
+
+                    calcEntries.subList(insertIndex - 1, insertIndex + 2).clear();
+                    break;
+                }
+                insertIndex++;
+            }
+
+            if(!subResult.equals("")) calcEntries.add(insertIndex - 1, subResult);
+        }
+        Log.d("CALC", String.valueOf(calcEntries));
+        clearEntry();
+    }
 
 
     public void addDecimal() {
@@ -153,7 +221,7 @@ public class MainActivity extends AppCompatActivity {
         } else if (!calcEntries.get(calcEntries.size() - 1).contains(".")) {
             Log.d("DECIMAL", "no decimal yet");
             String lastEntry = calcEntries.get(calcEntries.size() - 1);
-            if (Character.isDigit(lastEntry.charAt(0)) && lastEntry.length() != 1) {
+            if (Character.isDigit(lastEntry.charAt(0)) || lastEntry.length() != 1) {
                 calcEntries.set(calcEntries.size() - 1, lastEntry + ".");
             }
         }
@@ -170,6 +238,7 @@ public class MainActivity extends AppCompatActivity {
     public void buttonClicked(View v) {
         // using haptic feedback for every button
         v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_PRESS);
+        boolean equalsPressed = false;
         switch (v.getId()) {
             case R.id.nineBtn:
                 addEntry('9');
@@ -210,6 +279,9 @@ public class MainActivity extends AppCompatActivity {
             case R.id.multiBtn:
                 addEntry('*');
                 break;
+            case R.id.divBtn:
+                addEntry('/');
+                break;
             case R.id.deciBtn:
                 addDecimal();
                 break;
@@ -224,12 +296,12 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case R.id.equalsBtn:
                 calculate();
+                equalsPressed = true;
                 break;
             default:
                 Log.e("BUTTON", "Unidentified button pressed");
-
         }
         Log.d("STATE", String.valueOf(calcEntries));
-        updateCalcDisplay();
+        if(!equalsPressed) updateCalcDisplay();
     }
 }
