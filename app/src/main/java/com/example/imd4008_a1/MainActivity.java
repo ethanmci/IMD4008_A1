@@ -1,5 +1,6 @@
 package com.example.imd4008_a1;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Build;
@@ -10,7 +11,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +24,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     List<String> calcEntries;
     List<String> history;
 
+    // answer 'temp' storage, and boolean to tell when it should be displayed
     String answer;
     boolean isDisplayingAnswer;
 
@@ -57,7 +58,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // initializing answer + answer boolean
         isDisplayingAnswer = false;
+        answer = "";
 
         // setting up calculator display
         calcDisplay = findViewById(R.id.calcDisplay);
@@ -67,7 +70,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         historyView = findViewById(R.id.historyView);
         history = new ArrayList<>();
 
-        // getting buttons and setting on click listener
+        // getting buttons and setting on click listeners
+        // ugly here but cleaner than individual onclick fn's later on
+        // operator buttons
         addBtn = findViewById(R.id.addBtn);
         addBtn.setOnClickListener(this);
         subBtn = findViewById(R.id.subBtn);
@@ -77,6 +82,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         divBtn = findViewById(R.id.divBtn);
         divBtn.setOnClickListener(this);
 
+        //number buttons
         nineBtn = findViewById(R.id.nineBtn);
         nineBtn.setOnClickListener(this);
         eightBtn = findViewById(R.id.eightBtn);
@@ -98,6 +104,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         zeroBtn = findViewById(R.id.zeroBtn);
         zeroBtn.setOnClickListener(this);
 
+        // function / misc buttons
         clearBtn = findViewById(R.id.clearBtn);
         clearBtn.setOnClickListener(this);
         deleteBtn = findViewById(R.id.delBtn);
@@ -111,32 +118,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
-    public void onSaveInstanceState(Bundle savedInstanceState) {
+    public void onSaveInstanceState(@NonNull Bundle savedInstanceState) {
         super.onSaveInstanceState(savedInstanceState);
+        // storing all variables that need to persist
         savedInstanceState.putStringArrayList("history", (ArrayList<String>) history);
         savedInstanceState.putStringArrayList("calcEntries", (ArrayList<String>) calcEntries);
         savedInstanceState.putBoolean("isDisplayingAnswer", isDisplayingAnswer);
+        savedInstanceState.putString("answer", answer);
     }
 
     @Override
     public void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
+        // retrieving bundle variables
         history = savedInstanceState.getStringArrayList("history");
         calcEntries = savedInstanceState.getStringArrayList("calcEntries");
         isDisplayingAnswer = savedInstanceState.getBoolean("isDisplayingAnswer");
+        answer = savedInstanceState.getString("answer");
+
+        // re-displaying this history
         updateHistoryDisplay();
+        // displaying either answer or current equation
         if(isDisplayingAnswer) calcDisplay.setText(answer);
         else updateCalcDisplay();
     }
 
     @Override
     public void onClick(View v) {
-        // using haptic feedback for every button
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            // using haptic feedback for every button press
             v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_PRESS);
         }
-        isDisplayingAnswer = false;
+
+        isDisplayingAnswer = false; // defaulting the answer boolean to false on press
+
         int id = v.getId();
+        // if else statement to determine what key/button is being pressed
+        // Android studio *STRONGLY* suggested to use if else over case switch unfortunately ¯\_(ツ)_/¯
         if (id == R.id.nineBtn) {
             addEntry('9');
         } else if (id == R.id.eightBtn) {
@@ -175,11 +193,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             clearEntry();
         } else if (id == R.id.equalsBtn) {
             calculate();
-            isDisplayingAnswer = true;
+            isDisplayingAnswer = true; // used to override the default
         } else {
             Log.e("BUTTON", "Unidentified button pressed");
         }
-        if(isDisplayingAnswer) updateCalcDisplay();
+
+        if(!isDisplayingAnswer) updateCalcDisplay(); // updating the calculator's display
     }
 
     public void addEntry(char entry) {
@@ -193,11 +212,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     // char is an operator
                     calcEntries.add(Character.toString(entry));
                 } else if (lastEntry.charAt(0) == '0' && lastEntry.length() == 1 && entry != '0') {
+                    // overwriting the zero if it's at the start of the new set of numbers
                     calcEntries.set(calcEntries.size() - 1, Character.toString(entry));
                 } else {
                     // char is not an operator
 
-                    // bit messy? might want to change...
+                    // escaping if the user is attempting to add multiple zeros after a zero
                     if(lastEntry.charAt(0) == '0' && lastEntry.length() == 1 && entry == '0' ) return;
 
                     calcEntries.set(calcEntries.size() - 1,
@@ -214,6 +234,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public void delEntry() {
+        // making sure there is at least one stored entry to delete
         if(calcEntries.size() != 0) {
             String lastEntry = calcEntries.get(calcEntries.size() - 1);
             if (!Character.isDigit(lastEntry.charAt(0)) && lastEntry.length() == 1) {
@@ -227,6 +248,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     // has a negative sign
                     calcEntries.remove(calcEntries.size() - 1);
                 } else {
+                    // simply deleting one number in the string
                     calcEntries.set(calcEntries.size() - 1,
                             lastEntry.substring(0, lastEntry.length() - 1));
                 }
@@ -235,14 +257,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public void clearEntry() {
+        // resetting the arraylist
         calcEntries = new ArrayList<>();
     }
 
     public void changeSign() {
+        // making sure there is at least one entry in list
         if(calcEntries.size() > 0) {
             String lastEntry = calcEntries.get(calcEntries.size() - 1);
             if (!Character.isDigit(lastEntry.charAt(0)) && lastEntry.length() == 1) {
-                // char is an operator
+                // char is an operator, escape
                 return;
             } else {
                 // char is not an operator
@@ -261,6 +285,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void calculate() {
         if(calcEntries.size() <= 0) return;
 
+        // creating a string to store the full equation for the history
         String fullEquation = "";
         for(String entry : calcEntries) {
             fullEquation = fullEquation.concat(entry);
@@ -294,7 +319,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if(!subResult.equals("")) calcEntries.add(insertIndex - 1, subResult);
         }
 
-        // dealing w ith addition + subtraction
+        // dealing with addition + subtraction
         while(calcEntries.contains("+") || calcEntries.contains("-")) {
             int insertIndex = 0;
             String subResult = "";
@@ -316,11 +341,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if(!subResult.equals("")) calcEntries.add(insertIndex - 1, subResult);
         }
 
+        // updating answer + displaying it
         answer = String.valueOf(calcEntries.get(0));
-        Log.d("ANSWER", answer);
         calcDisplay.setText(answer);
-        history.add(0, fullEquation + " = " + calcEntries.get(0));
 
+        // adding to history
+        history.add(0, fullEquation + " = " + calcEntries.get(0));
         updateHistoryDisplay();
         clearEntry();
     }
@@ -333,6 +359,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             String lastEntry = calcEntries.get(calcEntries.size() - 1);
             if (Character.isDigit(lastEntry.charAt(0)) || lastEntry.length() != 1) {
                 calcEntries.set(calcEntries.size() - 1, lastEntry + ".");
+            } else {
+                calcEntries.add("0.");
             }
         }
     }
@@ -342,6 +370,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         for(String entry : calcEntries) {
             out = out.concat(" " + entry);
         }
+        // setting the text of the calcDisplay view
         calcDisplay.setText(out);
     }
 
@@ -350,6 +379,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         for(String item : history) {
             out = out.concat(item + "\n");
         }
+        // setting the text of the history view
         historyView.setText(out);
     }
 }
